@@ -1,0 +1,228 @@
+---
+title: "data_analysis"
+author: "Hugo"
+date: "2023-12-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, include=FALSE}
+library(here)
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(magrittr)
+library(tidyr)
+#library(tseries)
+library(rugarch)
+```
+
+```{r file_setup, include=FALSE}
+here::i_am("data_analysis.Rmd")
+```
+
+```{r import_data}
+daily_crypto_data <- read_csv(here("../Data", "daily_crypto_data.csv"), show_col_types = FALSE)
+market_caps_daily <- read_csv(here("../Data", "market_caps_daily.csv"), show_col_types = FALSE)
+volume_binance_daily <- read_csv(here("../Data", "volume_binance_daily.csv"), show_col_types = FALSE)
+```
+
+```{r}
+daily_crypto_stat <- daily_crypto_data %>%
+  summarise_if(
+    !grepl("date", names(.)),
+    list(
+      Mean = ~mean(., na.rm = TRUE),
+      Median = ~median(., na.rm = TRUE),
+      Min = ~min(., na.rm = TRUE),
+      Max = ~max(., na.rm = TRUE),
+      SD = ~sd(., na.rm = TRUE)
+    )
+  )
+
+daily_crypto_stat <- daily_crypto_stat %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = c("Coin", ".value"),
+    names_pattern = "(.*)_(.*)"
+  )
+
+caps_stat <- market_caps_daily %>%
+  summarise_if(
+    !grepl("date", names(.)),
+    list(
+      Mean = ~mean(., na.rm = TRUE),
+      Median = ~median(., na.rm = TRUE),
+      Min = ~min(., na.rm = TRUE),
+      Max = ~max(., na.rm = TRUE),
+      SD = ~sd(., na.rm = TRUE)
+    )
+  )
+
+caps_stat <- caps_stat %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = c("Coin", ".value"),
+    names_pattern = "(.*)_(.*)"
+  )
+
+volume_stat <- volume_binance_daily %>%
+  summarise_if(
+    !grepl("date", names(.)),
+    list(
+      Mean = ~mean(., na.rm = TRUE),
+      Median = ~median(., na.rm = TRUE),
+      Min = ~min(., na.rm = TRUE),
+      Max = ~max(., na.rm = TRUE),
+      SD = ~sd(., na.rm = TRUE)
+    )
+  )
+
+volume_stat <- volume_stat %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = c("Coin", ".value"),
+    names_pattern = "(.*)_(.*)"
+  )
+```
+
+```{r}
+daily_crypto_stat %>%
+knitr::kable(caption = "Statisques descriptives des coins")
+```
+
+```{r}
+caps_stat %>%
+knitr::kable(caption = "Statisques descriptives des capitalisation des coins")
+```
+
+```{r}
+volume_stat %>%
+knitr::kable(caption = "Statisques descriptives des volumes des coins")
+```
+
+
+
+```{r}
+volume <- volume_binance_daily %>%
+  pivot_longer(
+    -date, # Exclure la colonne de date du pivotement
+    names_to = "currency", # Nom de la nouvelle colonne pour les monnaies
+    values_to = "volume" # Nom de la nouvelle colonne pour les volumes
+  )
+
+caps <- market_caps_daily %>%
+  pivot_longer(
+    -date, # Exclure la colonne de date du pivotement
+    names_to = "currency", # Nom de la nouvelle colonne pour les monnaies
+    values_to = "cap" # Nom de la nouvelle colonne pour les capitalisations
+  )
+```
+
+## Etude des volumes
+
+```{r}
+ggplot(volume, aes(x = date, y = volume)) +
+  geom_line() +
+  facet_wrap(~ currency, scales = "free_y") +
+  theme_minimal() +
+  labs(title = "Évolution du Volume par Monnaie", x = "Date", y = "Volume")
+```
+
+```{r}
+ggplot(data = volume, aes(x = volume, fill = currency)) +
+  geom_density(alpha = 0.5) +
+  scale_x_log10() +
+  scale_y_log10() +
+  facet_wrap(~currency) +
+  labs(title = "Densité de Distribution des volumes par Monnaie", x = "Volume", y = "Densité")
+```
+
+```{r}
+ggplot(daily_crypto_stat, aes(x = Mean, y = SD, label = Coin)) +
+  geom_point() +
+  geom_text(vjust = -0.5, hjust = 0.5) + 
+  scale_x_log10() +
+  scale_y_log10() +
+  theme_minimal() +
+  labs(title = "Dispersion des Monnaies par moyenne et écart-type de leur capitalisation", 
+       x = "Moyenne", 
+       y = "Écart-Type")
+```
+
+```{r eval=FALSE, include=FALSE}
+coin_cols <- colnames(volume_binance_daily)[-1]
+for(coin in coin_cols) {
+  cat("Test ARCH pour le ", coin, "\n")
+  coin_series <- volume_binance_daily[[coin]]
+  arch_test_result <- arch.test(coin_series)
+  print(arch_test_result)
+}
+
+```
+```{r eval=FALSE, include=FALSE}
+spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)), 
+                   mean.model = list(armaOrder = c(0, 0), include.mean = FALSE))
+
+coin_cols <- colnames(volume_binance_daily)[-1]
+
+for(coin in coin_cols) {
+  cat("Test ARCH pour le ", coin, "\n")
+  coin_series <- na.omit(volume_binance_daily[[coin]])
+  fit <- ugarchfit(spec, coin_series)
+  show(fit)
+}
+```
+
+
+## Etude des capitalisations
+
+
+```{r}
+ggplot(caps, aes(x = date, y = cap)) +
+  geom_line() +
+  facet_wrap(~ currency, scales = "free_y") +
+  theme_minimal() +
+  labs(title = "Évolution du Volume par Monnaie", x = "Date", y = "Volume")
+```
+
+```{r}
+ggplot(data = caps, aes(x = cap, fill = currency)) +
+  geom_density(alpha = 0.5) +
+  scale_x_log10() +
+  scale_y_log10() +
+  facet_wrap(~currency) +
+  labs(title = "Densité de Distribution des capitalisations par Monnaie", x = "Capitalisation", y = "Densité")
+```
+
+```{r}
+ggplot(caps_stat, aes(x = Mean, y = SD, label = Coin)) +
+  geom_point() +
+  geom_text(vjust = -0.5, hjust = 0.5) + 
+  scale_x_log10() +
+  scale_y_log10() +
+  theme_minimal() +
+  labs(title = "Dispersion des Monnaies par moyenne et écart-type de leur capitalisation", 
+       x = "Moyenne", 
+       y = "Écart-Type")
+```
+
+## Etude comparée des volumes et capitalisations
+
+```{r}
+merged_data <- merge(caps_stat, volume_stat, by = "Coin")
+
+ggplot(merged_data, aes(x = Mean.x, y = Mean.y, label = Coin)) +
+  geom_point() + 
+  geom_text(vjust = -0.5, hjust = 0.5, check_overlap = TRUE) +
+  scale_x_log10() +
+  scale_y_log10() +
+  theme_minimal() +
+  labs(title = "Comparaison des moyennes de capitalisation et de volume par coin",
+       x = "Moyenne de capitalisation",
+       y = "Moyenne de volume")
+```
+
