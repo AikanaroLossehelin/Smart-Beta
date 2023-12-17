@@ -24,13 +24,13 @@ library(rugarch)
 here::i_am("data_analysis.Rmd")
 ```
 
-```{r import_data}
+```{r echo=FALSE}
 daily_crypto_data <- read_csv(here("../Data", "daily_crypto_data.csv"), show_col_types = FALSE)
 market_caps_daily <- read_csv(here("../Data", "market_caps_daily.csv"), show_col_types = FALSE)
 volume_binance_daily <- read_csv(here("../Data", "volume_binance_daily.csv"), show_col_types = FALSE)
 ```
 
-```{r}
+```{r echo=FALSE}
 daily_crypto_stat <- daily_crypto_data %>%
   summarise_if(
     !grepl("date", names(.)),
@@ -89,24 +89,24 @@ volume_stat <- volume_stat %>%
   )
 ```
 
-```{r}
+```{r echo=FALSE}
 daily_crypto_stat %>%
 knitr::kable(caption = "Statisques descriptives des coins")
 ```
 
-```{r}
+```{r echo=FALSE}
 caps_stat %>%
 knitr::kable(caption = "Statisques descriptives des capitalisation des coins")
 ```
 
-```{r}
+```{r echo=FALSE}
 volume_stat %>%
 knitr::kable(caption = "Statisques descriptives des volumes des coins")
 ```
 
 
 
-```{r}
+```{r echo=FALSE}
 volume <- volume_binance_daily %>%
   pivot_longer(
     -date, # Exclure la colonne de date du pivotement
@@ -124,7 +124,7 @@ caps <- market_caps_daily %>%
 
 ## Etude des volumes
 
-```{r}
+```{r echo=FALSE}
 ggplot(volume, aes(x = date, y = volume)) +
   geom_line() +
   facet_wrap(~ currency, scales = "free_y") +
@@ -132,16 +132,16 @@ ggplot(volume, aes(x = date, y = volume)) +
   labs(title = "Évolution du Volume par Monnaie", x = "Date", y = "Volume")
 ```
 
-```{r}
+```{r echo=FALSE}
+
 ggplot(data = volume, aes(x = volume, fill = currency)) +
   geom_density(alpha = 0.5) +
   scale_x_log10() +
-  scale_y_log10() +
   facet_wrap(~currency) +
   labs(title = "Densité de Distribution des volumes par Monnaie", x = "Volume", y = "Densité")
 ```
 
-```{r}
+```{r echo=FALSE}
 ggplot(daily_crypto_stat, aes(x = Mean, y = SD, label = Coin)) +
   geom_point() +
   geom_text(vjust = -0.5, hjust = 0.5) + 
@@ -153,7 +153,7 @@ ggplot(daily_crypto_stat, aes(x = Mean, y = SD, label = Coin)) +
        y = "Écart-Type")
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r, eval=FALSE, include=FALSE}
 coin_cols <- colnames(volume_binance_daily)[-1]
 for(coin in coin_cols) {
   cat("Test ARCH pour le ", coin, "\n")
@@ -163,10 +163,11 @@ for(coin in coin_cols) {
 }
 
 ```
+
+
 ```{r eval=FALSE, include=FALSE}
 spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)), 
                    mean.model = list(armaOrder = c(0, 0), include.mean = FALSE))
-
 coin_cols <- colnames(volume_binance_daily)[-1]
 
 for(coin in coin_cols) {
@@ -177,11 +178,17 @@ for(coin in coin_cols) {
 }
 ```
 
+```{r echo=FALSE}
+ggplot(volume, aes(x = currency, y = volume)) +
+  scale_y_log10() +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 65, hjust = 1)) +
+  ylab("capitalisation logarithmique")
+```
 
 ## Etude des capitalisations
 
-
-```{r}
+```{r echo=FALSE}
 ggplot(caps, aes(x = date, y = cap)) +
   geom_line() +
   facet_wrap(~ currency, scales = "free_y") +
@@ -189,16 +196,16 @@ ggplot(caps, aes(x = date, y = cap)) +
   labs(title = "Évolution du Volume par Monnaie", x = "Date", y = "Volume")
 ```
 
-```{r}
+
+```{r echo=FALSE}
 ggplot(data = caps, aes(x = cap, fill = currency)) +
   geom_density(alpha = 0.5) +
   scale_x_log10() +
-  scale_y_log10() +
   facet_wrap(~currency) +
   labs(title = "Densité de Distribution des capitalisations par Monnaie", x = "Capitalisation", y = "Densité")
 ```
 
-```{r}
+```{r echo=FALSE}
 ggplot(caps_stat, aes(x = Mean, y = SD, label = Coin)) +
   geom_point() +
   geom_text(vjust = -0.5, hjust = 0.5) + 
@@ -210,9 +217,18 @@ ggplot(caps_stat, aes(x = Mean, y = SD, label = Coin)) +
        y = "Écart-Type")
 ```
 
+```{r echo=FALSE}
+ggplot(caps, aes(x = currency, y = cap)) +
+  scale_y_log10() +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 65, hjust = 1)) +
+  ylab("capitalisation logarithmique")
+```
+
+
 ## Etude comparée des volumes et capitalisations
 
-```{r}
+```{r echo=FALSE}
 merged_data <- merge(caps_stat, volume_stat, by = "Coin")
 
 ggplot(merged_data, aes(x = Mean.x, y = Mean.y, label = Coin)) +
