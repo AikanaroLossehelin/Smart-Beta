@@ -142,15 +142,20 @@ ggplot(data = volume, aes(x = volume, fill = currency)) +
 ```
 
 ```{r echo=FALSE}
-ggplot(daily_crypto_stat, aes(x = Mean, y = SD, label = Coin)) +
+p <- ggplot(daily_crypto_stat, aes(x = Mean, y = SD)) +
+  geom_smooth(method = "lm", formula = y ~ x, color = "blue") +
   geom_point() +
-  geom_text(vjust = -0.5, hjust = 0.5) + 
   scale_x_log10() +
   scale_y_log10() +
   theme_minimal() +
   labs(title = "Dispersion des Monnaies par moyenne et écart-type de leur capitalisation", 
        x = "Moyenne", 
        y = "Écart-Type")
+
+p <- p + geom_text(aes(label = Coin, x = Mean, y = SD), 
+                   vjust = -0.5, hjust = 0.5, check_overlap = TRUE)
+
+print(p)
 ```
 
 ```{r, eval=FALSE, include=FALSE}
@@ -185,6 +190,36 @@ ggplot(volume, aes(x = currency, y = volume)) +
   theme(axis.text.x = element_text(angle = 65, hjust = 1)) +
   ylab("capitalisation logarithmique")
 ```
+```{r echo=FALSE, message=FALSE}
+
+mean_volume <- mean(volume$volume, na.rm = TRUE)
+sd_volume <- sd(volume$volume, na.rm = TRUE)
+skewness_volume <- mean((volume$volume-mean_volume)^3/sd_volume^3, na.rm=TRUE)
+kurtosis_volume <- mean((volume$volume-mean_volume)^4/sd_volume^4, na.rm=TRUE)
+
+p <- ggplot(volume, aes(x = volume)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  scale_x_log10() +
+  geom_vline(xintercept = mean_volume, color = "darkgreen", linetype = "dashed") + 
+  annotate("text", x = Inf, y = Inf, label = paste("Ecart-type:", round(sd_volume, 2)), 
+           hjust = 1.1, vjust = 1.1, size = 4, color = "black") +
+  annotate("text", x = Inf, y = Inf, label = paste("Skewness:", round(skewness_volume, 2)), 
+           hjust = 1.1, vjust = 5.1, size = 4, color = "black") +
+  annotate("text", x = Inf, y = Inf, label = paste("Kurtosis:", round(kurtosis_volume, 2)), 
+           hjust = 1.1, vjust = 9.1, size = 4, color = "black") +
+  labs(title = "Distribution des volumes et répartition de nos coins", 
+       x = "Volume", 
+       y = "Densité")
+
+for(i in 1:nrow(volume_stat)) {
+  p <- p + geom_vline(aes(xintercept = volume_stat$Mean[i]), color = "red", linetype = "dashed") +
+    annotate("text", x = volume_stat$Mean[i], y = 0.05, label = volume_stat$Coin[i], angle = 45, hjust = 0, vjust = 0, size = 3)
+}
+
+print(p)
+
+```
+
 
 ## Etude des capitalisations
 
@@ -206,15 +241,20 @@ ggplot(data = caps, aes(x = cap, fill = currency)) +
 ```
 
 ```{r echo=FALSE}
-ggplot(caps_stat, aes(x = Mean, y = SD, label = Coin)) +
+p <- ggplot(caps_stat, aes(x = Mean, y = SD)) +
+  geom_smooth(method = "lm", formula = y ~ x, color = "blue") +
   geom_point() +
-  geom_text(vjust = -0.5, hjust = 0.5) + 
   scale_x_log10() +
   scale_y_log10() +
   theme_minimal() +
   labs(title = "Dispersion des Monnaies par moyenne et écart-type de leur capitalisation", 
        x = "Moyenne", 
        y = "Écart-Type")
+
+p <- p + geom_text(aes(label = Coin, x = Mean, y = SD), 
+                   vjust = -0.5, hjust = 0.5, check_overlap = TRUE)
+
+print(p)
 ```
 
 ```{r echo=FALSE}
@@ -231,14 +271,19 @@ ggplot(caps, aes(x = currency, y = cap)) +
 ```{r echo=FALSE}
 merged_data <- merge(caps_stat, volume_stat, by = "Coin")
 
-ggplot(merged_data, aes(x = Mean.x, y = Mean.y, label = Coin)) +
-  geom_point() + 
-  geom_text(vjust = -0.5, hjust = 0.5, check_overlap = TRUE) +
+p <- ggplot(merged_data, aes(x = Mean.x, y = Mean.y)) +
+  geom_smooth(method = "lm", formula = y ~ x, color = "blue") + 
+  geom_point() +
   scale_x_log10() +
   scale_y_log10() +
   theme_minimal() +
   labs(title = "Comparaison des moyennes de capitalisation et de volume par coin",
        x = "Moyenne de capitalisation",
        y = "Moyenne de volume")
+
+p <- p + geom_text(aes(label = Coin, x = Mean.x, y = Mean.y), 
+                   vjust = -0.5, hjust = 0.5, check_overlap = TRUE)
+
+print(p)
 ```
 
