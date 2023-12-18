@@ -18,6 +18,7 @@ library(magrittr)
 library(tidyr)
 #library(tseries)
 library(rugarch)
+library(forecast)
 ```
 
 ```{r file_setup, include=FALSE}
@@ -158,30 +159,6 @@ p <- p + geom_text(aes(label = Coin, x = Mean, y = SD),
 print(p)
 ```
 
-```{r, eval=FALSE, include=FALSE}
-coin_cols <- colnames(volume_binance_daily)[-1]
-for(coin in coin_cols) {
-  cat("Test ARCH pour le ", coin, "\n")
-  coin_series <- volume_binance_daily[[coin]]
-  arch_test_result <- arch.test(coin_series)
-  print(arch_test_result)
-}
-
-```
-
-
-```{r eval=FALSE, include=FALSE}
-spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)), 
-                   mean.model = list(armaOrder = c(0, 0), include.mean = FALSE))
-coin_cols <- colnames(volume_binance_daily)[-1]
-
-for(coin in coin_cols) {
-  cat("Test ARCH pour le ", coin, "\n")
-  coin_series <- na.omit(volume_binance_daily[[coin]])
-  fit <- ugarchfit(spec, coin_series)
-  show(fit)
-}
-```
 
 ```{r echo=FALSE}
 ggplot(volume, aes(x = currency, y = volume)) +
@@ -200,7 +177,7 @@ kurtosis_volume <- mean((volume$volume-mean_volume)^4/sd_volume^4, na.rm=TRUE)
 p <- ggplot(volume, aes(x = volume)) +
   geom_density(fill = "blue", alpha = 0.5) +
   scale_x_log10() +
-  geom_vline(xintercept = mean_volume, color = "darkgreen", linetype = "dashed") + 
+  geom_vline(xintercept = mean_volume, color = "red", linetype = "dashed") + 
   annotate("text", x = Inf, y = Inf, label = paste("Ecart-type:", round(sd_volume, 2)), 
            hjust = 1.1, vjust = 1.1, size = 4, color = "black") +
   annotate("text", x = Inf, y = Inf, label = paste("Skewness:", round(skewness_volume, 2)), 
@@ -212,13 +189,32 @@ p <- ggplot(volume, aes(x = volume)) +
        y = "Densité")
 
 for(i in 1:nrow(volume_stat)) {
-  p <- p + geom_vline(aes(xintercept = volume_stat$Mean[i]), color = "red", linetype = "dashed") +
-    annotate("text", x = volume_stat$Mean[i], y = 0.05, label = volume_stat$Coin[i], angle = 45, hjust = 0, vjust = 0, size = 3)
+  p <- p + annotate("text", x = volume_stat$Mean[i], y = 0.05, label = volume_stat$Coin[i], angle = 45, hjust = 0, vjust = 0, size = 3)
 }
 
 print(p)
 
 ```
+
+### Modélisation des volatilités conditionnelles des volumes
+
+```{r echo=FALSE}
+monnaie_cols <- colnames(volume_binance_daily)[-1]
+
+graphs_per_window = 4
+
+for(i in seq(1, length(monnaie_cols), by = graphs_per_window)) {
+  par(mfrow = c(2, 2))
+  for(j in i:min(i+graphs_per_window-1, length(monnaie_cols))) {
+    mvbd <- mean(volume_binance_daily[[monnaie_cols[j]]])
+    ts_data <- ts((volume_binance_daily[[monnaie_cols[j]]] - mvbd)^2)
+    Pacf(ts_data, main = paste("PACF pour", monnaie_cols[j]))
+  }
+}
+
+```
+On part sur un modèle GARCH(1,3)
+
 
 
 ## Etude des capitalisations
@@ -286,4 +282,5 @@ p <- p + geom_text(aes(label = Coin, x = Mean.x, y = Mean.y),
 
 print(p)
 ```
+
 
