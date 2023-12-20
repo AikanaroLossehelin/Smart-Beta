@@ -32,25 +32,6 @@ volume_binance_daily <- read_csv(here("../Data", "volume_binance_daily.csv"), sh
 ```
 
 ```{r echo=FALSE}
-daily_crypto_stat <- daily_crypto_data %>%
-  summarise_if(
-    !grepl("date", names(.)),
-    list(
-      Mean = ~mean(., na.rm = TRUE),
-      Median = ~median(., na.rm = TRUE),
-      Min = ~min(., na.rm = TRUE),
-      Max = ~max(., na.rm = TRUE),
-      SD = ~sd(., na.rm = TRUE)
-    )
-  )
-
-daily_crypto_stat <- daily_crypto_stat %>%
-  pivot_longer(
-    cols = everything(),
-    names_to = c("Coin", ".value"),
-    names_pattern = "(.*)_(.*)"
-  )
-
 caps_stat <- market_caps_daily %>%
   summarise_if(
     !grepl("date", names(.)),
@@ -88,10 +69,33 @@ volume_stat <- volume_stat %>%
     names_to = c("Coin", ".value"),
     names_pattern = "(.*)_(.*)"
   )
+
+rdt_crypto <- daily_crypto_data %>%
+  mutate(across(-date, ~log(.) - lag(log(.)))) %>%
+  slice(-1)
+
+rdt_stat <- rdt_crypto %>%
+  summarise_if(
+    !grepl("date", names(.)),
+    list(
+      Mean = ~mean(., na.rm = TRUE),
+      Median = ~median(., na.rm = TRUE),
+      Min = ~min(., na.rm = TRUE),
+      Max = ~max(., na.rm = TRUE),
+      SD = ~sd(., na.rm = TRUE)
+    )
+  )
+
+rdt_stat <- rdt_stat %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = c("Coin", ".value"),
+    names_pattern = "(.*)_(.*)"
+  )
 ```
 
 ```{r echo=FALSE}
-daily_crypto_stat %>%
+rdt_stat %>%
 knitr::kable(caption = "Statisques descriptives des coins")
 ```
 
@@ -121,6 +125,13 @@ caps <- market_caps_daily %>%
     names_to = "currency", # Nom de la nouvelle colonne pour les monnaies
     values_to = "cap" # Nom de la nouvelle colonne pour les capitalisations
   )
+
+rdt <- rdt_crypto %>%
+  pivot_longer(
+    -date, # Exclure la colonne de date du pivotement
+    names_to = "currency", # Nom de la nouvelle colonne pour les monnaies
+    values_to = "value" # Nom de la nouvelle colonne pour les capitalisations
+  )
 ```
 
 ## Etude des volumes
@@ -143,13 +154,13 @@ ggplot(data = volume, aes(x = volume, fill = currency)) +
 ```
 
 ```{r echo=FALSE}
-p <- ggplot(daily_crypto_stat, aes(x = Mean, y = SD)) +
+p <- ggplot(volume_stat, aes(x = Mean, y = SD)) +
   geom_smooth(method = "lm", formula = y ~ x, color = "blue") +
   geom_point() +
   scale_x_log10() +
   scale_y_log10() +
   theme_minimal() +
-  labs(title = "Dispersion des Monnaies par moyenne et écart-type de leur capitalisation", 
+  labs(title = "Dispersion des Monnaies par moyenne et écart-type de leur volume", 
        x = "Moyenne", 
        y = "Écart-Type")
 
@@ -282,5 +293,73 @@ p <- p + geom_text(aes(label = Coin, x = Mean.x, y = Mean.y),
 
 print(p)
 ```
+
+# Etude des rendements
+
+
+```{r}
+ggplot(rdt, aes(x = date, y = value)) +
+  geom_line() +
+  facet_wrap(~ currency, scales = "free_y") +
+  theme_minimal() +
+  labs(title = "Évolution du rendement par coin", x = "Date", y = "rendement")
+```
+
+```{r}
+ggplot(rdt, aes(x = value, fill = currency)) +
+  geom_density(alpha = 0.5) +
+  scale_x_log10() +
+  facet_wrap(~currency) +
+  labs(title = "Densité de Distribution des rendements par coin", x = "Rendement", y = "Densité")
+```
+
+
+```{r}
+ggplot(rdt, aes(x = currency, y = value)) +
+  scale_y_log10() +
+  geom_boxplot(na.rm = TRUE) +
+  theme(axis.text.x = element_text(angle = 65, hjust = 1)) +
+  ylab("rendement")
+```
+
+
+```{r}
+mean_rdt <- mean(rdt$value, na.rm = TRUE)
+sd_rdt <- sd(rdt$value, na.rm = TRUE)
+skewness_rdt <- mean((rdt$value-mean_rdt)^3/sd_rdt^3, na.rm=TRUE)
+kurtosis_rdt <- mean((rdt$value-mean_rdt)^4/sd_rdt^4, na.rm=TRUE)
+
+p <- ggplot(rdt, aes(x = value)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  
+  geom_vline(xintercept = mean_rdt, color = "red", linetype = "dashed") + 
+  annotate("text", x = Inf, y = Inf, label = paste("Ecart-type:", round(sd_rdt, 2)), 
+           hjust = 1.1, vjust = 1.1, size = 4, color = "black") +
+  annotate("text", x = Inf, y = Inf, label = paste("Skewness:", round(skewness_rdt, 2)), 
+           hjust = 1.1, vjust = 5.1, size = 4, color = "black") +
+  annotate("text", x = Inf, y = Inf, label = paste("Kurtosis:", round(kurtosis_rdt, 2)), 
+           hjust = 1.1, vjust = 9.1, size = 4, color = "black") +
+  labs(title = "Distribution des rendements et répartition de nos coins", 
+       x = "Rendement", 
+       y = "Densité")
+
+for(i in 1:nrow(rdt_stat)) {
+  p <- p + annotate("text", x = rdt_stat$Mean[i], y = 0.05, label = rdt_stat$Coin[i], angle = 45, hjust = 0, vjust = 0, size = 3)
+}
+
+print(p)
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
 
