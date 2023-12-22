@@ -207,27 +207,6 @@ print(p)
 
 ```
 
-### Modélisation des volatilités conditionnelles des volumes
-
-```{r echo=FALSE}
-monnaie_cols <- colnames(volume_binance_daily)[-1]
-
-graphs_per_window = 4
-
-for(i in seq(1, length(monnaie_cols), by = graphs_per_window)) {
-  par(mfrow = c(2, 2))
-  for(j in i:min(i+graphs_per_window-1, length(monnaie_cols))) {
-    mvbd <- mean(volume_binance_daily[[monnaie_cols[j]]])
-    ts_data <- ts((volume_binance_daily[[monnaie_cols[j]]] - mvbd)^2)
-    Pacf(ts_data, main = paste("PACF pour", monnaie_cols[j]))
-  }
-}
-
-```
-On part sur un modèle GARCH(1,3)
-
-
-
 ## Etude des capitalisations
 
 ```{r echo=FALSE}
@@ -350,8 +329,24 @@ for(i in 1:nrow(rdt_stat)) {
 print(p)
 ```
 
+### Modélisation des volatilités conditionnelles des rendements
 
+```{r}
+monnaie_cols <- colnames(rdt_crypto)[-1]
 
+graphs_per_window = 4
+
+for(i in seq(1, length(monnaie_cols), by = graphs_per_window)) {
+  par(mfrow = c(2, 2))
+  for(j in i:min(i+graphs_per_window-1, length(monnaie_cols))) {
+    mvbd <- mean(rdt_crypto[[monnaie_cols[j]]])
+    ts_data <- ts((rdt_crypto[[monnaie_cols[j]]] - mvbd)^2)
+    Pacf(ts_data, main = paste("PACF pour", monnaie_cols[j]))
+  }
+}
+```
+
+Garch 1,5
 
 
 
